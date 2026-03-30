@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  airflow-standalone:
+    image: apache/airflow:2.8.1-python3.11
+    container_name: jdbcwriter-airflow
+    environment:
+      # Executor configuration - SequentialExecutor for simplicity
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+
+      # Database configuration - SQLite for simplicity
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
+
+      # DAG configuration
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+
+      # Webserver configuration
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'true'
+      AIRFLOW__WEBSERVER__INSTANCE_NAME: 'JDBC Writer - Local Dev'
+
+      # API configuration
+      AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+
+      # Install AWS provider at startup
+      _PIP_ADDITIONAL_REQUIREMENTS: 'apache-airflow-providers-amazon==8.17.0'
+
+      # AWS configuration
+      AWS_PROFILE: external
+      AWS_DEFAULT_REGION: ap-southeast-1
+
+      # Airflow admin user (created on first startup)
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+      _AIRFLOW_DB_UPGRADE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+
+    ports:
+      - "8080:8080"
+
+    volumes:
+      # Mount AWS credentials and config (read-only)
+      - ${HOME}/.aws/credentials:/home/airflow/.aws/credentials:ro
+      - ${HOME}/.aws/config:/home/airflow/.aws/config:ro
+
+      # Mount entire airflow directory (for dags, logs, database)
+      - ./airflow:/opt/airflow
+
+    command: >
+      bash -c "
+        airflow db init &&
+        airflow users create
+          --username admin
+          --firstname Admin
+          --lastname User
+          --role Admin
+          --email admin@example.com
+          --password admin || true &&
+        airflow standalone
+      "
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s

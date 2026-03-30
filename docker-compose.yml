@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for testing
+  postgres:
+    image: postgres:15-alpine
+    container_name: jdbcwriter-postgres
+    environment:
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: testdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./tests/init-postgres.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser -d testdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Oracle database for testing (using Oracle XE)
+  oracle:
+    image: gvenzl/oracle-xe:21-slim
+    container_name: jdbcwriter-oracle
+    environment:
+      ORACLE_PASSWORD: testpass
+      APP_USER: testuser
+      APP_USER_PASSWORD: testpass
+    ports:
+      - "1521:1521"
+    volumes:
+      - oracle_data:/opt/oracle/oradata
+      - ./tests/init-oracle.sql:/container-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # PySpark application
+  pyspark:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jdbcwriter-pyspark
+    depends_on:
+      postgres:
+        condition: service_healthy
+      oracle:
+        condition: service_healthy
+    volumes:
+      - ./tests:/app/tests
+      - ./target:/app/target
+      - ./results:/app/results
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: testdb
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      ORACLE_HOST: oracle
+      ORACLE_PORT: 1521
+      ORACLE_SERVICE: XEPDB1
+      ORACLE_USER: testuser
+      ORACLE_PASSWORD: testpass
+    command: tail -f /dev/null
+
+volumes:
+  postgres_data:
+  oracle_data:

@@ -1,0 +1,67 @@
+# Compiled files
+target/
+*.class
+*.jar
+*.log
+
+# SBT specific
+.cache
+.history
+.lib/
+dist/*
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+
+# Scala-IDE specific
+.scala_dependencies
+.worksheet
+.cache-main
+.cache-tests
+
+# IDE
+.idea/
+.bsp/
+.vscode/
+.metals/
+*.iml
+*.ipr
+*.iws
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+python/build/
+python/dist/
+
+# Temporary files
+*.zip
+*.tmp
+*.swp
+*~
+
+# macOS files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Build artifacts
+*.tar.gz
+*.tgz
+*.whl
+sbt-*.tgz
+spark_jdbcwriter-*.whl
+
+# Output directories
+output/
+
+# Airflow runtime files
+airflow/airflow.db
+airflow/airflow.cfg
+airflow/airflow-webserver.pid
+airflow/webserver_config.py
+airflow/logs/

@@ -1,0 +1,53 @@
+# Local testing environment for AWS Glue 5.0 with PostgreSQL
+# Usage:
+#   docker compose -f docker-compose.glue5.yml up -d
+#   docker compose -f docker-compose.glue5.yml exec glue bash
+#   # Inside container: pip install /app/python/ && python /app/tests/test_glue_local.py
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: glue5-postgres
+    environment:
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: testdb
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./tests/init-postgres.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser -d testdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  glue:
+    image: public.ecr.aws/glue/aws-glue-libs:5
+    container_name: glue5-spark
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "4040:4040"   # Spark UI
+      - "18080:18080" # Spark History Server (optional)
+    volumes:
+      - ./python:/app/python
+      - ./glue_artifact:/app/glue_artifact
+      - ./tests:/app/tests
+    environment:
+      # PostgreSQL connection
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: testdb
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      # Disable AWS credential requirements for local testing
+      AWS_ACCESS_KEY_ID: testing
+      AWS_SECRET_ACCESS_KEY: testing
+      AWS_DEFAULT_REGION: ap-southeast-1
+      # Timezone
+      TZ: Asia/Bangkok
+    working_dir: /app
+    # Keep container running
+    entrypoint: ["tail", "-f", "/dev/null"]
